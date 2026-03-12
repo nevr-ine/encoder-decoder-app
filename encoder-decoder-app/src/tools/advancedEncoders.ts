@@ -947,3 +947,364 @@ export const bitRotationTool: EncodeTool = {
     return results.length > 0 ? results.join('\n\n') : 'No readable rotations found';
   }
 };
+
+// Affine Cipher - Linear transformation
+export const affineCipherTool: EncodeTool = {
+  id: 'affine',
+  name: 'Affine Cipher',
+  category: 'Cipher',
+  description: 'Affine cipher (E(x) = (ax + b) mod 26)',
+  encode: (input: string) => {
+    const a = 5; // Must be coprime with 26
+    const b = 8;
+    let result = '';
+    for (const char of input.toUpperCase()) {
+      if (/[A-Z]/.test(char)) {
+        const x = char.charCodeAt(0) - 65;
+        const encrypted = (a * x + b) % 26;
+        result += String.fromCharCode(encrypted + 65);
+      } else {
+        result += char;
+      }
+    }
+    return result;
+  },
+  decode: (input: string) => {
+    // Calculate modular multiplicative inverse
+    const a = 5;
+    const b = 8;
+    let a_inv = 1;
+    for (let i = 1; i < 26; i++) {
+      if ((a * i) % 26 === 1) {
+        a_inv = i;
+        break;
+      }
+    }
+    let result = '';
+    for (const char of input.toUpperCase()) {
+      if (/[A-Z]/.test(char)) {
+        const y = char.charCodeAt(0) - 65;
+        const decrypted = (a_inv * (y - b + 26)) % 26;
+        result += String.fromCharCode(decrypted + 65);
+      } else {
+        result += char;
+      }
+    }
+    return result;
+  }
+};
+
+// Playfair Cipher - Digraph substitution cipher
+export const playfairTool: EncodeTool = {
+  id: 'playfair',
+  name: 'Playfair Cipher',
+  category: 'Cipher',
+  description: 'Playfair cipher (digraph substitution)',
+  
+  encode: (input: string) => {
+    const key = 'SECRET';
+    const keySquare = generateKeySquare(key);
+    let text = input.toUpperCase().replace(/J/g, 'I').replace(/[^A-Z]/g, '');
+    
+    // Pad with X if odd length
+    if (text.length % 2 !== 0) text += 'X';
+    
+    let result = '';
+    for (let i = 0; i < text.length; i += 2) {
+      const pair = playfairEncryptPair(text[i], text[i + 1], keySquare);
+      result += pair;
+    }
+    return result;
+  },
+  
+  decode: (input: string) => {
+    const key = 'SECRET';
+    const keySquare = generateKeySquare(key);
+    const text = input.toUpperCase();
+    
+    let result = '';
+    for (let i = 0; i < text.length; i += 2) {
+      const pair = playfairDecryptPair(text[i], text[i + 1], keySquare);
+      result += pair;
+    }
+    return result.replace(/X$/, ''); // Remove padding X
+  }
+};
+
+function generateKeySquare(key: string): string[][] {
+  const alphabet = 'ABCDEFGHIKLMNOPQRSTUVWXYZ'; // J is omitted
+  const used = new Set<string>();
+  let square: string[] = [];
+  
+  for (const char of key.toUpperCase() + alphabet) {
+    if (!used.has(char) && /[A-Z]/.test(char) && char !== 'J') {
+      square.push(char);
+      used.add(char);
+    }
+  }
+  
+  const result: string[][] = [];
+  for (let i = 0; i < 5; i++) {
+    result.push(square.slice(i * 5, (i + 1) * 5));
+  }
+  return result;
+}
+
+function findPosition(keySquare: string[][], char: string): [number, number] {
+  for (let i = 0; i < 5; i++) {
+    for (let j = 0; j < 5; j++) {
+      if (keySquare[i][j] === char) return [i, j];
+    }
+  }
+  return [0, 0];
+}
+
+function playfairEncryptPair(char1: string, char2: string, keySquare: string[][]): string {
+  const [r1, c1] = findPosition(keySquare, char1);
+  const [r2, c2] = findPosition(keySquare, char2);
+  
+  if (r1 === r2) {
+    // Same row
+    return keySquare[r1][(c1 + 1) % 5] + keySquare[r2][(c2 + 1) % 5];
+  } else if (c1 === c2) {
+    // Same column
+    return keySquare[(r1 + 1) % 5][c1] + keySquare[(r2 + 1) % 5][c2];
+  } else {
+    // Rectangle
+    return keySquare[r1][c2] + keySquare[r2][c1];
+  }
+}
+
+function playfairDecryptPair(char1: string, char2: string, keySquare: string[][]): string {
+  const [r1, c1] = findPosition(keySquare, char1);
+  const [r2, c2] = findPosition(keySquare, char2);
+  
+  if (r1 === r2) {
+    // Same row
+    return keySquare[r1][(c1 - 1 + 5) % 5] + keySquare[r2][(c2 - 1 + 5) % 5];
+  } else if (c1 === c2) {
+    // Same column
+    return keySquare[(r1 - 1 + 5) % 5][c1] + keySquare[(r2 - 1 + 5) % 5][c2];
+  } else {
+    // Rectangle
+    return keySquare[r1][c2] + keySquare[r2][c1];
+  }
+}
+
+// Hill Cipher - Polygraphic substitution cipher using linear algebra
+export const hillCipherTool: EncodeTool = {
+  id: 'hill',
+  name: 'Hill Cipher',
+  category: 'Cipher',
+  description: 'Hill cipher (matrix-based encryption)',
+  
+  encode: (input: string) => {
+    const text = input.toUpperCase().replace(/[^A-Z]/g, '');
+    // Pad to multiple of 2
+    const padded = text + 'X'.repeat((2 - (text.length % 2)) % 2);
+    
+    // Simple 2x2 Hill cipher with key matrix [[5,8],[17,3]]
+    const a = 5, b = 8, c = 17, d = 3;
+    let result = '';
+    
+    for (let i = 0; i < padded.length; i += 2) {
+      const x = padded.charCodeAt(i) - 65;
+      const y = padded.charCodeAt(i + 1) - 65;
+      
+      const encX = (a * x + b * y) % 26;
+      const encY = (c * x + d * y) % 26;
+      
+      result += String.fromCharCode(encX + 65);
+      result += String.fromCharCode(encY + 65);
+    }
+    return result;
+  },
+  
+  decode: (input: string) => {
+    const text = input.toUpperCase();
+    // Inverse of [[5,8],[17,3]] mod 26
+    // det = 5*3 - 8*17 = 15 - 136 = -121 ≡ 5 (mod 26)
+    // det_inv = 21 (modular inverse of 5 mod 26)
+    // Inverse = 21 * [[3,-8],[-17,5]] mod 26
+    
+    const a = 21 * 3 % 26; // 63 % 26 = 11
+    const b = 21 * (-8) % 26; // -168 % 26 = 18
+    const c = 21 * (-17) % 26; // -357 % 26 = 21
+    const d = 21 * 5 % 26; // 105 % 26 = 1
+    
+    let result = '';
+    for (let i = 0; i < text.length; i += 2) {
+      const x = text.charCodeAt(i) - 65;
+      const y = text.charCodeAt(i + 1) - 65;
+      
+      const decX = (a * x + b * y) % 26;
+      const decY = (c * x + d * y) % 26;
+      
+      result += String.fromCharCode(((decX % 26) + 26) % 26 + 65);
+      result += String.fromCharCode(((decY % 26) + 26) % 26 + 65);
+    }
+    return result;
+  }
+};
+
+// Polybius Square - Grid-based substitution
+export const polybiusSquareTool: EncodeTool = {
+  id: 'polybius',
+  name: 'Polybius Square',
+  category: 'Cipher',
+  description: 'Polybius square (2-digit encoding)',
+  
+  encode: (input: string) => {
+    const square = [
+      ['A', 'B', 'C', 'D', 'E'],
+      ['F', 'G', 'H', 'I/J', 'K'],
+      ['L', 'M', 'N', 'O', 'P'],
+      ['Q', 'R', 'S', 'T', 'U'],
+      ['V', 'W', 'X', 'Y', 'Z']
+    ];
+    
+    let result = '';
+    for (const char of input.toUpperCase()) {
+      if (/[A-Z]/.test(char)) {
+        for (let i = 0; i < 5; i++) {
+          for (let j = 0; j < 5; j++) {
+            if (square[i][j].includes(char)) {
+              result += (i + 1).toString() + (j + 1).toString();
+            }
+          }
+        }
+      }
+    }
+    return result;
+  },
+  
+  decode: (input: string) => {
+    const square = [
+      ['A', 'B', 'C', 'D', 'E'],
+      ['F', 'G', 'H', 'I/J', 'K'],
+      ['L', 'M', 'N', 'O', 'P'],
+      ['Q', 'R', 'S', 'T', 'U'],
+      ['V', 'W', 'X', 'Y', 'Z']
+    ];
+    
+    let result = '';
+    for (let i = 0; i < input.length; i += 2) {
+      const row = parseInt(input[i]) - 1;
+      const col = parseInt(input[i + 1]) - 1;
+      if (row >= 0 && row < 5 && col >= 0 && col < 5) {
+        result += square[row][col];
+      }
+    }
+    return result;
+  }
+};
+
+// Frequency Analysis Tool - Analyze character frequencies
+export const freqAnalysisDetailedTool: EncodeTool = {
+  id: 'freq-analysis-detailed',
+  name: 'Frequency Analysis (Detailed)',
+  category: 'Analysis',
+  description: 'Detailed character frequency analysis for breaking substitution ciphers',
+  
+  encode: (input: string) => {
+    return 'Frequency analysis is used for decoding only.';
+  },
+  
+  decode: (input: string) => {
+    const text = input.toUpperCase().replace(/[^A-Z]/g, '');
+    const freq: Record<string, number> = {};
+    
+    // Count frequencies
+    for (const char of text) {
+      freq[char] = (freq[char] || 0) + 1;
+    }
+    
+    // English letter frequencies for reference
+    const englishFreq: Record<string, number> = {
+      'E': 12.70, 'T': 9.06, 'A': 8.17, 'O': 7.51, 'I': 6.97,
+      'N': 6.75, 'S': 6.33, 'H': 6.09, 'R': 5.99, 'D': 4.25,
+      'L': 4.03, 'C': 2.78, 'U': 2.76, 'M': 2.41, 'W': 2.36,
+      'F': 2.23, 'G': 2.02, 'Y': 1.97, 'P': 1.93, 'B': 1.29,
+      'V': 0.98, 'K': 0.77, 'J': 0.15, 'X': 0.15, 'Q': 0.10, 'Z': 0.07
+    };
+    
+    // Calculate percentages and sort
+    let result = 'Character Frequency Analysis:\n';
+    result += '================================\n';
+    
+    const sorted = Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .map(([char, count]) => ({
+        char,
+        count,
+        percent: ((count / text.length) * 100).toFixed(2)
+      }));
+    
+    result += sorted.map(item => 
+      `${item.char}: ${item.count} (${item.percent}%)`
+    ).join('\n');
+    
+    result += '\n\nEnglish Frequency Reference:\n';
+    result += '============================\n';
+    result += Object.entries(englishFreq)
+      .sort((a, b) => b[1] - a[1])
+      .map(([char, freq]) => `${char}: ${freq.toFixed(2)}%`)
+      .join('\n');
+    
+    return result;
+  }
+};
+
+// Image Steganography (Text in LSBs)
+export const steganographyTool: EncodeTool = {
+  id: 'steganography',
+  name: 'Steganography (Text)',
+  category: 'Steganography',
+  description: 'Hide text in image or extract hidden text (simplified)',
+  
+  encode: (input: string) => {
+    // Convert text to base64 to preserve it
+    const encoded = btoa(input);
+    let binary = '';
+    
+    for (let i = 0; i < encoded.length; i++) {
+      binary += encoded.charCodeAt(i).toString(2).padStart(8, '0');
+    }
+    
+    // Represent as hex for easy viewing
+    let result = '';
+    for (let i = 0; i < binary.length; i += 8) {
+      const byte = binary.substr(i, 8);
+      result += parseInt(byte, 2).toString(16).padStart(2, '0');
+    }
+    
+    return `STEG:${result}`;
+  },
+  
+  decode: (input: string) => {
+    if (!input.startsWith('STEG:')) {
+      return 'Invalid steganographic data (must start with STEG:)';
+    }
+    
+    const hex = input.substring(5);
+    let binary = '';
+    
+    for (let i = 0; i < hex.length; i += 2) {
+      const byte = parseInt(hex.substr(i, 2), 16);
+      binary += byte.toString(2).padStart(8, '0');
+    }
+    
+    let decoded = '';
+    for (let i = 0; i < binary.length; i += 8) {
+      const byte = binary.substr(i, 8);
+      const char = String.fromCharCode(parseInt(byte, 2));
+      decoded += char;
+    }
+    
+    try {
+      return atob(decoded);
+    } catch {
+      return 'Failed to decode steganographic data';
+    }
+  }
+};

@@ -5,7 +5,9 @@ import {
   quotedPrintableTool, uuencodeTool, brainfuckTool, ookTool,
   utf16Tool, utf32Tool, vigenereBruteTool, gzipTool,
   frequencyAnalysisTool, unicodeAnalysisTool, xorTool, 
-  substitutionSolverTool, base91Tool, bitRotationTool
+  substitutionSolverTool, base91Tool, bitRotationTool,
+  affineCipherTool, playfairTool, hillCipherTool, polybiusSquareTool,
+  freqAnalysisDetailedTool, steganographyTool
 } from './advancedEncoders';
 
 export interface EncodeTool {
@@ -662,13 +664,21 @@ export const allTools: EncodeTool[] = [
   // Cipher - Standard & Advanced
   xorTool,
   bitRotationTool,
+  affineCipherTool,
+  playfairTool,
+  hillCipherTool,
+  polybiusSquareTool,
   
   // Cipher - Cracking/Solvers
   vigenereBruteTool,
   substitutionSolverTool,
+  freqAnalysisDetailedTool,
   
   // Compression
   gzipTool,
+  
+  // Steganography
+  steganographyTool,
   
   // Esoteric Languages
   brainfuckTool,
