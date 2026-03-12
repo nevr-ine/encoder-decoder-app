@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [selectedTool, setSelectedTool] = useState<EncodeTool | null>(allTools[0]);
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     const saved = localStorage.getItem('history');
     return saved ? JSON.parse(saved) : [];
@@ -133,6 +134,30 @@ const App: React.FC = () => {
     }, new Map<string, EncodeTool[]>())
   );
 
+  // Filter tools based on search term
+  const filteredTools = searchTerm.trim() === '' 
+    ? allTools 
+    : allTools.filter(tool =>
+        tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tool.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tool.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tool.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+  const filteredCategoryGroups = Array.from(
+    filteredTools.reduce((acc, tool) => {
+      const category = tool.category;
+      if (!acc.has(category)) {
+        acc.set(category, []);
+      }
+      const tools = acc.get(category);
+      if (tools) {
+        tools.push(tool);
+      }
+      return acc;
+    }, new Map<string, EncodeTool[]>())
+  );
+
   return (
     <div className="app">
       <header className="header">
@@ -160,6 +185,27 @@ const App: React.FC = () => {
               📜 {history.length}
             </button>
           </div>
+
+          {!showHistory && (
+            <div className="search-box">
+              <input
+                type="text"
+                placeholder="🔍 Search tools..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="tool-search"
+              />
+              {searchTerm && (
+                <button
+                  className="clear-search"
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
 
           {showHistory ? (
             <div className="history-panel">
@@ -192,26 +238,30 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div className="tools-list">
-              {categoryGroups.map(([category, tools]) => (
-                <div key={category} className="tool-category">
-                  <h3 className="category-title">{category}</h3>
-                  {(tools as EncodeTool[]).map(tool => (
-                    <button
-                      key={tool.id}
-                      className={`tool-btn ${selectedTool?.id === tool.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedTool(tool);
-                        setInput('');
-                        setOutput('');
-                      }}
-                      title={tool.description}
-                    >
-                      <div className="tool-name">{tool.name}</div>
-                      <div className="tool-desc">{tool.description}</div>
-                    </button>
-                  ))}
-                </div>
-              ))}
+              {filteredCategoryGroups.length === 0 ? (
+                <p className="no-results">No tools match your search</p>
+              ) : (
+                filteredCategoryGroups.map(([category, tools]) => (
+                  <div key={category} className="tool-category">
+                    <h3 className="category-title">{category}</h3>
+                    {(tools as EncodeTool[]).map(tool => (
+                      <button
+                        key={tool.id}
+                        className={`tool-btn ${selectedTool?.id === tool.id ? 'active' : ''}`}
+                        onClick={() => {
+                          setSelectedTool(tool);
+                          setInput('');
+                          setOutput('');
+                        }}
+                        title={tool.description}
+                      >
+                        <div className="tool-name">{tool.name}</div>
+                        <div className="tool-desc">{tool.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </aside>
