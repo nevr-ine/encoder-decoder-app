@@ -4,6 +4,8 @@
 
 Perfect for CTF (Capture The Flag) competitions, cybersecurity professionals, and cryptography enthusiasts.
 
+TL:DR: This is a vibecoding product, contained 30+ tools for decoding, from text, zip to simple stegnography. Now i just have to ask AI for the type of encoded and decode it myself instead of wasting token and time on waiting for AI to decode it. Feel free to use it or share any issues!
+
 ## 📋 Features
 
 ### 30+ Built-in Tools
